@@ -90,8 +90,27 @@ void KernelStart(ExceptionInfo *info, unsigned int pmem_size, void *orig_brk, ch
         FreeFrame(frame_addr >> PAGESHIFT);
         frame_addr += (unsigned long)PAGESIZE;
     }
-    // Create idle process
 
+    // Create idle process
+    idle_proc = (pcb*)malloc(sizeof(pcb));
+    idle_proc->pid = 0;
+    idle_proc->num_child = 0;
+    idle_proc->delay_clock = 0;
+    idle_proc->brk = MEM_INVALID_SIZE;
+    idle_proc->pt_r0 = pt_r0;
+    idle_proc->ctx = (SavedContext*)malloc(sizeof(SavedContext));
+    idle_proc->statusQueue = NULL;
+    idle_proc->prev = NULL;
+    idle_proc->next = NULL;
+
+    info->pc = &idle;
+    info->sp = (void *)USER_STACK_LIMIT;
+
+    int pageNumber = DOWN_TO_PAGE(USER_STACK_LIMIT - 1) >> PAGESHIFT;
+    pt_r0[pageNumber].valid = ++process_count;
+    pt_r0[pageNumber].pfn = GetFreeFrame();
+    pt_r0[pageNumber].kprot = PROT_READ | PROT_WRITE;
+    TracePrintf(5, "pt_r0[0x%lx].pfn = 0x%lx\n", pageNumber, pt_r0[pageNumber].pfn);
 }
 
 int SetKernelBrk(void *addr){

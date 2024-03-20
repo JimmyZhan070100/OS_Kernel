@@ -4,6 +4,9 @@ PhysFrame *physFrame_head;
 int free_frame_count = 0;
 unsigned long next_PT_validAddr = VMEM_1_LIMIT - PAGESIZE;
 
+unsigned int process_count = 0;
+pcb *idle_proc;
+
 unsigned long GetFreeFrame(){
     PhysFrame *tmp = physFrame_head;
     physFrame_head = tmp->next;

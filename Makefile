@@ -66,7 +66,7 @@ yalnix: $(KERNEL_OBJS)
 	$(PUBLIC_DIR)/bin/link-kernel-$(LANG) -o yalnix $(KERNEL_OBJS)
 
 clean:
-	rm -f $(KERNEL_OBJS) $(ALL) TTY*
+	rm -f $(KERNEL_OBJS) $(ALL) TTY* TRACE DISK 
 
 depend:
 	$(CC) $(CPPFLAGS) -M $(KERNEL_SRCS) > .depend
