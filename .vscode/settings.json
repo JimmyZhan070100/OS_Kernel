@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.js": "javascriptreact",
+        "yalnix.h": "c",
+        "hardware.h": "c",
+        "stdio.h": "c",
+        "loadinfo.h": "c",
+        "handler.h": "c"
+    }
+}
