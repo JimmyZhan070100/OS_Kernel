@@ -26,7 +26,7 @@
 #	if you have a file named test1.c in this directory.
 #
 # ALL = yalnix test1 test2 test3
-ALL = yalnix
+ALL = yalnix init
 
 #
 #	You must modify the KERNEL_OBJS and KERNEL_SRCS definitions
@@ -66,7 +66,7 @@ yalnix: $(KERNEL_OBJS)
 	$(PUBLIC_DIR)/bin/link-kernel-$(LANG) -o yalnix $(KERNEL_OBJS)
 
 clean:
-	rm -f $(KERNEL_OBJS) $(ALL) TTY* TRACE DISK 
+	rm -f $(KERNEL_OBJS) $(ALL) TTY* TRACE DISK core*
 
 depend:
 	$(CC) $(CPPFLAGS) -M $(KERNEL_SRCS) > .depend

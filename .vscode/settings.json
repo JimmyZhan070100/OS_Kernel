@@ -5,6 +5,9 @@
         "hardware.h": "c",
         "stdio.h": "c",
         "loadinfo.h": "c",
-        "handler.h": "c"
+        "handler.h": "c",
+        "bitset": "c",
+        "algorithm": "c",
+        "kernel.h": "c"
     }
 }
