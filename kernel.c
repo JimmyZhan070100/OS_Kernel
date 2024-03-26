@@ -13,9 +13,9 @@ unsigned int process_count = 0;
 pcb *active_proc;
 pcb *idle_proc;
 pcb *init_proc;
-pcb *delay_proc;
-pcb *wait_proc;
-pcb *ready_proc;
+pcb delay_proc;
+pcb wait_proc;
+pcb ready_proc;
 
 // =============================================================================
 // Allocate Frame Functions
@@ -55,7 +55,7 @@ void FreeFrame(unsigned long addr){
 }
 
 void GetfreePhysicalAddr(unsigned long begin, unsigned long end, unsigned int kprot, unsigned uprot, struct pte* cur_ptr0){
-    // TracePrintf(0, "In GetfreePhysicalAddr function\n");
+    TracePrintf(0, "In GetfreePhysicalAddr function\n");
     // unsigned long new_brake = UP_TO_PAGE(end);
     // unsigned long old_brake = UP_TO_PAGE(begin);
     unsigned long page;
@@ -99,25 +99,14 @@ int CheckPhysFrame(int req_count){
 // =============================================================================
 
 
-void AddPCB(pcb *cur, pcb **queHead){
+void AddPCB(pcb *cur, pcb *queHead){
     TracePrintf(0, "cur = 0x%lx, queHead = 0x%lx\n", cur, *queHead);
-    if(cur == NULL) return; 
-    cur->next = NULL;
-
-    if (*queHead == NULL) {
-        // List is empty, so make queHead point to cur.
-        *queHead = cur;
-        cur->prev = NULL;
-    } else {
-        // List is not empty, find the last node.
-        pcb *lastNode = *queHead;
-        while (lastNode->next != NULL) {
-            lastNode = lastNode->next;
-        }
-        // Append cur to the end of the list.
-        lastNode->next = cur;
-        cur->prev = lastNode; // Set cur's prev to the last node.
+    while (queHead->next){
+        queHead = queHead->next;
     }
+    queHead->next = cur;
+    cur->prev = queHead;
+    cur->next = NULL;
     TracePrintf(0, "Finish AddPCB\n");
     TracePrintf(0, "cur = 0x%lx, queHead = 0x%lx\n", cur, *queHead);
 }
@@ -160,8 +149,8 @@ void AppendStatus(struct Status *status_que, int status)
   status_que->next = new_status;
 }
 
-void RemoveParent(pcb *cur, pcb **queHead) {
-    pcb *node = *queHead;
+void RemoveParent(pcb *cur, pcb *queHead) {
+    pcb *node = queHead->next;
     while (node != NULL) {
         if (node->parent == cur) {
             node->parent = NULL; // Set the parent to NULL if it matches cur.
@@ -229,14 +218,14 @@ SavedContext *init_SwtichFunc(SavedContext *ctpx, void *p1, void *p2){
 
 SavedContext *Delay_SwitchFunc(SavedContext *ctpx, void *p1, void *p2){
     TracePrintf(0, "=== In Delay_SwitchFunc from 0x%lx to 0x%lx ===\n", p1, p2);
-    if(ready_proc == NULL){
+    if(ready_proc.next == NULL){
         WriteRegister(REG_PTR0, idle_proc->pt_r0);
         active_proc = idle_proc;
     }
     else{
-        WriteRegister(REG_PTR0, ((pcb *)ready_proc)->pt_r0);
-        RemovePCB(ready_proc);
-        active_proc = ready_proc;
+        WriteRegister(REG_PTR0, ((pcb *)ready_proc.next)->pt_r0);
+        RemovePCB(ready_proc.next);
+        active_proc = ready_proc.next;
     }
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_0);
     AddPCB(p1, &delay_proc);
@@ -365,7 +354,6 @@ SavedContext *SwitchFunc(SavedContext *ctxp, void *p1, void *p2){
     if (((pcb *)p1)->pid > 0){
         AddPCB(p1, &ready_proc);
     }
-    TracePrintf(0, "ready_proc = 0x%lx\n", ready_proc);
 
     return &active_proc->ctx;
 }

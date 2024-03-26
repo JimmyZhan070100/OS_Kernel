@@ -43,12 +43,13 @@ int MyExec(char *filename, char **argvec, ExceptionInfo *info){
 
 void MyExit(int status){
     TracePrintf(0, "Enter MyExit (%d)...\n", status);
-    if(ready_proc == NULL && delay_proc == NULL && wait_proc == NULL){
+    if(ready_proc.next == NULL && delay_proc.next == NULL && wait_proc.next == NULL){
         /*
          * Handling the terminal proecss
          *
         */
         TracePrintf(0, "Enter MyExit (%d), Every process is empty\n", status);
+        Halt();
     }
     if(active_proc->num_child > 0){
         RemoveParent(active_proc, &ready_proc);
@@ -59,11 +60,11 @@ void MyExit(int status){
     if(active_proc->parent){
         // AppendStatus(active_proc->parent->statusQueue, status);
         // ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, active_proc->parent);
-        ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, ready_proc);
+        ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
     }
     else{
         TracePrintf(0, "Enter Here\n");
-        ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, ready_proc);
+        ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
     }
     return;
 }
@@ -74,7 +75,7 @@ int MyWait(int *status_ptr){
         return ERROR;
     }
     else if(active_proc->statusQueue->next == NULL){
-        ContextSwitch(Wait_SwitchFunc, &active_proc->ctx, active_proc, ready_proc->next);
+        ContextSwitch(Wait_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
     }
     
     // Pop status queue
@@ -99,16 +100,10 @@ int MyBrk(void *addr){
         TracePrintf(0, "Not enough physical frames\n");
         return ERROR;
     }
-    struct pte *pt0 = active_proc->pt_r0;
-    int index;
-    for (; active_proc->brk < addr; active_proc->brk += PAGESIZE){
-        index = (unsigned long)active_proc->brk >> PAGESHIFT;
-        pt0[index].kprot = PROT_READ | PROT_WRITE;
-        pt0[index].uprot = PROT_READ | PROT_WRITE;
-        pt0[index].valid = 1;
-        pt0[index].pfn = GetFreeFrame();
-        TracePrintf(6, "pt0[0x%lx].pfn = 0x%lx\n", index, pt0[index].pfn);
-    }
+    unsigned long active_pfn = (unsigned long)active_proc->brk >> PAGESHIFT;
+    GetfreePhysicalAddr(active_pfn, active_pfn + desired_npg,
+                PROT_READ | PROT_WRITE, PROT_READ | PROT_WRITE, active_proc->pt_r0);
+    active_proc->brk = addr;
     return 0;
 }
 

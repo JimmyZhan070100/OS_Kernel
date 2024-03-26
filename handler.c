@@ -48,9 +48,10 @@ void TrapClockHandler(ExceptionInfo *info){
     }
 
     // Check delay pcb's time is up
-    pcb *node = delay_proc;
+    pcb *node = &delay_proc;
     pcb *tmp;
-    while(node){
+    while(node && node->next){
+        node = node->next;
         node->delay_clock--;
         // TracePrintf(0, "node->delay_clock = %d\n", node->delay_clock);
         if(node->delay_clock <= 0){
@@ -61,14 +62,13 @@ void TrapClockHandler(ExceptionInfo *info){
             node = tmp;
             break;
         }
-        node = node->next;
     }
     // Context switch if the current process has used 2 ticks
-    if ((active_proc->pid == 0 || active_proc->pass_tick >= 2) && ready_proc)
+    if ((active_proc->pid == 0 || active_proc->pass_tick >= 2) && ready_proc.next)
     {
-        TracePrintf(0, "clock switch from pid %d to pid %d\n", active_proc->pid, ready_proc->pid);
+        TracePrintf(0, "clock switch from pid %d to pid %d\n", active_proc->pid, ready_proc.next->pid);
         active_proc->pass_tick = 0;
-        ContextSwitch(SwitchFunc, &active_proc->ctx, active_proc, ready_proc);
+        ContextSwitch(SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
     }
 }
 void TrapIllegalHandler(ExceptionInfo *info){

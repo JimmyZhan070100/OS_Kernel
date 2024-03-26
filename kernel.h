@@ -63,11 +63,11 @@ extern unsigned int process_count;
 extern pcb *active_proc;
 extern pcb *idle_proc;
 extern pcb *init_proc;
-extern pcb *delay_proc;
-extern pcb *wait_proc;
-extern pcb *ready_proc;
+extern pcb delay_proc;
+extern pcb wait_proc;
+extern pcb ready_proc;
 
-void AddPCB(pcb *cur, pcb **queHead);
+void AddPCB(pcb *cur, pcb *queHead);
 
 pcb *PopPCB(pcb *);
 
@@ -75,7 +75,7 @@ void RemovePCB(pcb *);
 
 void AppendStatus(struct Status *status_que, int status);
 
-void RemoveParent(pcb *cur, pcb **queHead);
+void RemoveParent(pcb *cur, pcb *queHead);
 
 // Swtich Function
 RCS421RegVal Virt2Phy(unsigned long addr);

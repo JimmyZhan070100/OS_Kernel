@@ -13,7 +13,7 @@ int main(int argc, char **argv)
   {
     TracePrintf(0, "argv[%d] = %s\n", i, argv[i]);
   }
-  // TracePrintf(0, "PID = %d\n", GetPid());
+  TracePrintf(0, "PID = %d\n", GetPid());
 
   // if(Fork()){
   //   TracePrintf(0, "Child process\n");
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 
   // while (1)
   // {
-    Delay(3);
+    // Delay(3);
     // Pause();
     TracePrintf(0, "In  \"init\" program pause ends!\n");
   // }

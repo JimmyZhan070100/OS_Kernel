@@ -29,7 +29,7 @@
 # TESTS_SRCS := $(wildcard tests/*.c)
 # TESTS := $(TESTS_SRCS:tests/%.c=%)
 # ALL = yalnix init $(TESTS)
-ALL = yalnix init
+ALL = yalnix init brktest exectest
 
 #
 #	You must modify the KERNEL_OBJS and KERNEL_SRCS definitions
