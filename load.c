@@ -209,9 +209,9 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
     // >>>>     kprot = PROT_READ | PROT_WRITE
     // >>>>     uprot = PROT_READ | PROT_EXEC
     // >>>>     pfn   = a new page of physical memory
-    TracePrintf(0, "Start GetfreePhysicalAddr\n");
+    // TracePrintf(0, "Start GetfreePhysicalAddr\n");
     GetfreePhysicalAddr(MEM_INVALID_PAGES, MEM_INVALID_PAGES + text_npg, PROT_READ | PROT_WRITE, PROT_READ | PROT_EXEC, pt_r0);
-    TracePrintf(0, "Finish GetfreePhysicalAddr\n");
+    // TracePrintf(0, "Finish GetfreePhysicalAddr\n");
     int pageNumber;
     // for(i=MEM_INVALID_PAGES; i < MEM_INVALID_PAGES + text_npg; i++){
     //     pt_r0[i].valid = 1;
@@ -231,7 +231,7 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
 
     GetfreePhysicalAddr(MEM_INVALID_PAGES + text_npg, MEM_INVALID_PAGES + text_npg + data_bss_npg, 
                 PROT_READ | PROT_WRITE, PROT_READ | PROT_WRITE, pt_r0);
-    TracePrintf(0, "Finish GetfreePhysicalAddr by data_bss\n");
+    // TracePrintf(0, "Finish GetfreePhysicalAddr by data_bss\n");
     // for (; i < MEM_INVALID_PAGES + text_npg + data_bss_npg; ++i){
     //     pt_r0[i].valid = 1;
     //     pt_r0[i].kprot = PROT_READ | PROT_WRITE;
@@ -285,7 +285,6 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
 	// >>>> to its parent process.
 	return (-2);
     }
-    TracePrintf(0, "Test\n");
 
     close(fd);			/* we've read it all now */
 
@@ -293,7 +292,7 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
      *  Now set the page table entries for the program text to be readable
      *  and executable, but not writable.
      */
-    TracePrintf(0, "Start PTE for text readable and executable\n");
+    // TracePrintf(0, "Start PTE for text readable and executable\n");
     struct pte* TempVir2phy = TempVirtualMem;
     pt_r1[(TempVirtualMem-VMEM_1_BASE) >> PAGESHIFT].pfn = (unsigned long)(pt_r0) >> PAGESHIFT;
     for(i=0; i<text_npg; i++){
@@ -302,7 +301,7 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
         TempVir2phy[pageNumber].kprot = PROT_READ | PROT_EXEC;
         TempVir2phy[pageNumber].uprot = PROT_READ | PROT_EXEC;
     }
-    TracePrintf(0, "Finish PTE for text readable and executable\n");
+    // TracePrintf(0, "Finish PTE for text readable and executable\n");
     // for(i=0; i<text_npg; i++){
     //     pageNumber = MEM_INVALID_PAGES + i;
     //     pt_r0[pageNumber].kprot = PROT_READ | PROT_EXEC;
@@ -353,5 +352,6 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
     for(i=0; i<NUM_REGS; i++){
         info->regs[i] = 0;
     }
+    TracePrintf(0, "=== End Loadprogram ===\n");
     return (0);
 }

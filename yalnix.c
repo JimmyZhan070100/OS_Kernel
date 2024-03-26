@@ -75,7 +75,7 @@ void KernelStart(ExceptionInfo *info, unsigned int pmem_size, void *orig_brk, ch
         pt_r1[idx].uprot = PROT_NONE;
         pt_r1[idx].valid = 1;
         pt_r1[idx].pfn = ((long)(addr) >> PAGESHIFT);
-        TracePrintf(5, "pt_r1[0x%lx].pfn = 0x%u, addr = %p\n", idx, pt_r1[idx].pfn, addr);
+        // TracePrintf(5, "pt_r1[0x%lx].pfn = 0x%u, addr = %p\n", idx, pt_r1[idx].pfn, addr);
         idx++;
     }
     TracePrintf(5, "Initialize region 1 bss & heap\n");
@@ -86,7 +86,7 @@ void KernelStart(ExceptionInfo *info, unsigned int pmem_size, void *orig_brk, ch
         pt_r1[idx].uprot = PROT_NONE;
         pt_r1[idx].valid = 1;
         pt_r1[idx].pfn = addr >> PAGESHIFT;
-        TracePrintf(5, "pt_r1[0x%lx].pfn = 0x%lx\n", idx, pt_r1[idx].pfn);
+        // TracePrintf(5, "pt_r1[0x%lx].pfn = 0x%lx\n", idx, pt_r1[idx].pfn);
         idx++;
     }
     
@@ -125,7 +125,7 @@ void KernelStart(ExceptionInfo *info, unsigned int pmem_size, void *orig_brk, ch
         pt_r0[idx].kprot = PROT_READ | PROT_WRITE;
         pt_r0[idx].uprot = PROT_NONE;
         pt_r0[idx].pfn = idx;
-        TracePrintf(5, "pt_r0[0x%lx].pfn = 0x%lx\n", idx, pt_r0[idx].pfn);
+        // TracePrintf(5, "pt_r0[0x%lx].pfn = 0x%lx\n", idx, pt_r0[idx].pfn);
     }
 
     // Enable virtual memory
@@ -142,7 +142,6 @@ void KernelStart(ExceptionInfo *info, unsigned int pmem_size, void *orig_brk, ch
     idle_proc = (pcb*)malloc(sizeof(pcb));
     idle_proc->pid = 0;
     idle_proc->brk = MEM_INVALID_SIZE;
-    idle_proc->ctx = (SavedContext*)malloc(sizeof(SavedContext));
     idle_proc->pt_r0 = pt_r0;
     active_proc = idle_proc;
 
@@ -179,6 +178,7 @@ void KernelStart(ExceptionInfo *info, unsigned int pmem_size, void *orig_brk, ch
         ContextSwitch(&init_SwtichFunc, &idle_proc->ctx, idle_proc, init_proc);
         TracePrintf(0, "Finish Context Switch\n");
         if(active_proc->pid == 1){
+            TracePrintf(0, "=== Start into Loadprogram ===\n");
             LoadProgram(cmd_args[0], cmd_args, info);
         }
     }

@@ -8,6 +8,7 @@
         "handler.h": "c",
         "bitset": "c",
         "algorithm": "c",
-        "kernel.h": "c"
+        "kernel.h": "c",
+        "stdlib.h": "c"
     }
 }

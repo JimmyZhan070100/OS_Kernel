@@ -26,6 +26,9 @@
 #	if you have a file named test1.c in this directory.
 #
 # ALL = yalnix test1 test2 test3
+# TESTS_SRCS := $(wildcard tests/*.c)
+# TESTS := $(TESTS_SRCS:tests/%.c=%)
+# ALL = yalnix init $(TESTS)
 ALL = yalnix init
 
 #
@@ -34,8 +37,8 @@ ALL = yalnix init
 #	make up your kernel, and KERNEL_SRCS should  be a list of
 #	the corresponding source files that make up your kernel.
 #
-KERNEL_OBJS = yalnix.o handler.o kernel.o
-KERNEL_SRCS = yalnix.c handler.h kernel.h
+KERNEL_OBJS = yalnix.o handler.o kernel.o kernel_call.o
+KERNEL_SRCS = yalnix.c handler.h kernel.h kernel_call.h
 
 #
 #	You should not have to modify anything else in this Makefile
@@ -70,5 +73,8 @@ clean:
 
 depend:
 	$(CC) $(CPPFLAGS) -M $(KERNEL_SRCS) > .depend
+
+$(TESTS): %: tests/%.o
+	$(LINK.o) -o tests/$@ $^ $(LOADLIBES) $(LDLIBS)
 
 #include .depend
