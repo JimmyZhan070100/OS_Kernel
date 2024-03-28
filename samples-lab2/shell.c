@@ -39,13 +39,18 @@ main(int argc, char **argv)
 	int status;
 	int j;
 
+	TracePrintf(0, "1 =====================================\n");
 	TtyPrintf(termno, prompt);
+	TracePrintf(0, "2 =====================================\n");
 
+	
 	n = TtyRead(termno, buf, sizeof(buf));
+	
 	if (n <= 0 || n >= (int)sizeof(buf))		/* line too big */
 	    continue;
 	buf[n] = '\0';
 
+	
 	if (!(cmd_argv[0] = strtok(buf, separators)))
 	    continue;
 	if (strcmp(cmd_argv[0], "exit") == 0) {

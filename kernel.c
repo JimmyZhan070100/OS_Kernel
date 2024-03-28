@@ -17,6 +17,8 @@ pcb delay_proc;
 pcb wait_proc;
 pcb ready_proc;
 
+Terminal terminals[NUM_TERMINALS];
+
 // =============================================================================
 // Allocate Frame Functions
 // =============================================================================
@@ -31,21 +33,6 @@ unsigned long GetFreeFrame(){
     return freeAddr;
 }
 
-unsigned long GetFromPTMEM(){
-    unsigned long freeAddr = next_PT_validAddr;
-    struct pte *pt1 = (struct pte *)ReadRegister(REG_PTR1);
-    next_PT_validAddr -= PAGESIZE;
-    int pageNumber = (freeAddr - VMEM_1_BASE) >> PAGESHIFT;
-    if(pt1[pageNumber].valid == 0){
-        pt1[pageNumber].valid = 1;
-        pt1[pageNumber].kprot = PROT_READ | PROT_WRITE;
-        pt1[pageNumber].uprot = PROT_NONE;
-        pt1[pageNumber].pfn = GetFreeFrame();
-        TracePrintf(5, "pt1[0x%lx].pfn = 0x%lx\n", pageNumber, pt1[pageNumber].pfn);
-    }
-    return freeAddr;
-}
-
 void FreeFrame(unsigned long addr){
     PhysFrame *new_frame = malloc(sizeof(PhysFrame));
     new_frame->addr = addr;
@@ -55,9 +42,7 @@ void FreeFrame(unsigned long addr){
 }
 
 void GetfreePhysicalAddr(unsigned long begin, unsigned long end, unsigned int kprot, unsigned uprot, struct pte* cur_ptr0){
-    TracePrintf(0, "In GetfreePhysicalAddr function\n");
-    // unsigned long new_brake = UP_TO_PAGE(end);
-    // unsigned long old_brake = UP_TO_PAGE(begin);
+    // TracePrintf(0, "In GetfreePhysicalAddr function\n");
     unsigned long page;
     struct pte* TempVir2phy = TempVirtualMem;
     pcb* p1pcb = (pcb *)(cur_ptr0);
@@ -74,7 +59,7 @@ void GetfreePhysicalAddr(unsigned long begin, unsigned long end, unsigned int kp
 }
 
 void FreePhysicalAddr(unsigned long begin, unsigned long end, struct pte* cur_ptr0){
-    TracePrintf(0, "In FreePhysicalAddr function\n");
+    // TracePrintf(0, "In FreePhysicalAddr function\n");
     unsigned long new_brake = UP_TO_PAGE(end);
     unsigned long old_brake = UP_TO_PAGE(begin);
     unsigned long page;
@@ -90,7 +75,7 @@ void FreePhysicalAddr(unsigned long begin, unsigned long end, struct pte* cur_pt
 }
 
 int CheckPhysFrame(int req_count){
-    TracePrintf(0, "free_frame_count = %d vs %d\n", free_frame_count, req_count);
+    // TracePrintf(0, "free_frame_count = %d vs req_count = %d\n", free_frame_count, req_count);
     return free_frame_count >= req_count;
 }
 
@@ -100,15 +85,14 @@ int CheckPhysFrame(int req_count){
 
 
 void AddPCB(pcb *cur, pcb *queHead){
-    TracePrintf(0, "cur = 0x%lx, queHead = 0x%lx\n", cur, *queHead);
+    // TracePrintf(0, "AddPCB: cur = 0x%lx, queHead = 0x%lx\n", cur, *queHead);
     while (queHead->next){
         queHead = queHead->next;
     }
     queHead->next = cur;
     cur->prev = queHead;
     cur->next = NULL;
-    TracePrintf(0, "Finish AddPCB\n");
-    TracePrintf(0, "cur = 0x%lx, queHead = 0x%lx\n", cur, *queHead);
+    // TracePrintf(0, "Finish AddPCB\n");
 }
 
 pcb *PopPCB(pcb *que){
@@ -164,19 +148,12 @@ void RemoveParent(pcb *cur, pcb *queHead) {
 // Context Switch Functions
 // =============================================================================
 
-
-RCS421RegVal Virt2Phy(unsigned long addr){
-    unsigned long pageNumber = (addr - VMEM_1_BASE) >> PAGESHIFT;
-    struct pte *pt_r1 = (struct pte *)ReadRegister(REG_PTR1);
-    return (RCS421RegVal)(pt_r1[pageNumber].pfn<<PAGESHIFT|(addr&PAGEOFFSET));
-}
-
 SavedContext *init_SwtichFunc(SavedContext *ctpx, void *p1, void *p2){
-    TracePrintf(0, "=== In init_SwitchFunc from 0x%lx to 0x%lx ===\n", p1, p2);
+    // TracePrintf(0, "=== In init_SwitchFunc from 0x%lx to 0x%lx ===\n", p1, p2);
 
     // Fork init process
     struct pte *init_pt_r0 = (struct pte *)(GetFreeFrame() << PAGESHIFT);
-    TracePrintf(0, "init_pt_r0 = 0x%lx\n", init_pt_r0);
+    // TracePrintf(0, "init_pt_r0 = 0x%lx\n", init_pt_r0);
     int index;
     struct pte* TempVir2phy = TempVirtualMem;
     pcb* p1pcb = (pcb *)(p1);
@@ -205,14 +182,10 @@ SavedContext *init_SwtichFunc(SavedContext *ctpx, void *p1, void *p2){
     init_proc->pt_r0 = init_pt_r0;
     pt_r0 = init_pt_r0;
     active_proc = init_proc;
-    //
 
-    // TracePrintf(0, "Before Flush\n");
     WriteRegister(REG_PTR0, init_pt_r0);
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_0);
-    // TracePrintf(0, "Finish Flush\n");
-    TracePrintf(0, "init_proc->pid = %d\n", init_proc->pid);
-    TracePrintf(0, "=== End init_SwitchFunc ===\n");
+    // TracePrintf(0, "=== End init_SwitchFunc ===\n");
     return ctpx;
 }
 
@@ -224,8 +197,8 @@ SavedContext *Delay_SwitchFunc(SavedContext *ctpx, void *p1, void *p2){
     }
     else{
         WriteRegister(REG_PTR0, ((pcb *)ready_proc.next)->pt_r0);
-        RemovePCB(ready_proc.next);
         active_proc = ready_proc.next;
+        RemovePCB(ready_proc.next);
     }
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_0);
     AddPCB(p1, &delay_proc);
@@ -242,7 +215,7 @@ SavedContext *Fork_SwitchFunc(SavedContext *ctpx, void *parent, void *child){
     unsigned int index;
     struct pte* TempVir2phy = TempVirtualMem;
     struct pte* parent_ptr0 = ((pcb *)parent)->pt_r0;
-    TracePrintf(0, "0x%lx\n", parent_ptr0);
+    TracePrintf(0, "partent_ptr0 = 0x%lx\n", parent_ptr0);
 
     for(index=0; index<PAGE_TABLE_LEN; index++){
         // pt_r1[(TempVirtualMem-VMEM_1_BASE) >> PAGESHIFT].pfn = (unsigned long)(parent_ptr0) >> PAGESHIFT;
@@ -301,7 +274,7 @@ SavedContext *Exit_SwitchFunc(SavedContext *ctxp, void *p1, void *p2){
         RemovePCB(p2);
     }
     else{
-        TracePrintf(0, "idle_proc = 0x%lx\n", idle_proc);
+        // TracePrintf(0, "idle_proc = 0x%lx\n", idle_proc);
         active_proc = idle_proc;
     }
     WriteRegister(REG_PTR0, active_proc->pt_r0);
@@ -361,4 +334,41 @@ SavedContext *SwitchFunc(SavedContext *ctxp, void *p1, void *p2){
 void PhysAddr_map_VirAddr(struct pte *pageTable){
     pt_r1[(TempVirtualMem-VMEM_1_BASE) >> PAGESHIFT].pfn = (unsigned long)(pageTable) >> PAGESHIFT;
     WriteRegister(REG_TLB_FLUSH, TempVirtualMem);
+}
+
+// =============================================================================
+// Terminal Functions
+// =============================================================================
+
+void Push_TerminalReadPCB(int tty_id, pcb *cur_pcb){
+    AddPCB(cur_pcb, &terminals[tty_id].read_pcb);
+}
+
+void Push_TerminalWritePCB(int tty_id, pcb *cur_pcb){
+    AddPCB(cur_pcb, &terminals[tty_id].write_pcb);
+}
+
+pcb *Pop_TerminalReadPCB(int tty_id){
+    return PopPCB(&terminals[tty_id].read_pcb);
+}
+
+pcb *Pop_TerminalWritePCB(int tty_id){
+    return PopPCB(&terminals[tty_id].write_pcb);
+}
+
+void Push_TerminalBUFF(buff *que, buff *cur_buff){
+    while(que->next){
+        que = que->next;
+    }
+    que->next = cur_buff;
+    cur_buff->next = NULL;
+}
+
+buff *Pop_TerminalBUFF(buff *que){
+    buff *tmp = que->next;
+    if(tmp){
+        que->next = tmp->next;
+        tmp->next = NULL;
+    }
+    return tmp;
 }

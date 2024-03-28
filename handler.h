@@ -1,5 +1,6 @@
 #include <comp421/hardware.h>
 #include <comp421/yalnix.h>
+#include <bits/siginfo.h>
 
 typedef void (*interrupt_hdr)(ExceptionInfo *);
 

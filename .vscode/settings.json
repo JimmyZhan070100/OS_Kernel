@@ -9,6 +9,8 @@
         "bitset": "c",
         "algorithm": "c",
         "kernel.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "siginfo.h": "c",
+        "signal.h": "c"
     }
 }

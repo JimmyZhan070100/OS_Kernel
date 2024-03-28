@@ -71,9 +71,9 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
 	    close(fd);
 	    return (-1);
     }
-    TracePrintf(0, "text_size 0x%lx, data_size 0x%lx, bss_size 0x%lx\n",
-	li.text_size, li.data_size, li.bss_size);
-    TracePrintf(0, "entry 0x%lx\n", li.entry);
+    // TracePrintf(0, "text_size 0x%lx, data_size 0x%lx, bss_size 0x%lx\n",
+	// li.text_size, li.data_size, li.bss_size);
+    // TracePrintf(0, "entry 0x%lx\n", li.entry);
 
     /*
      *  Figure out how many bytes are needed to hold the arguments on
@@ -85,7 +85,7 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
 	size += strlen(args[i]) + 1;
     }
     argcount = i;
-    TracePrintf(0, "LoadProgram: size %d, argcount %d\n", size, argcount);
+    // TracePrintf(0, "LoadProgram: size %d, argcount %d\n", size, argcount);
 
     /*
      *  Now save the arguments in a separate buffer in Region 1, since
@@ -116,8 +116,8 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
     data_bss_npg = UP_TO_PAGE(li.data_size + li.bss_size) >> PAGESHIFT;
     stack_npg = (USER_STACK_LIMIT - DOWN_TO_PAGE(cpp)) >> PAGESHIFT;
 
-    TracePrintf(0, "LoadProgram: text_npg %d, data_bss_npg %d, stack_npg %d\n",
-	text_npg, data_bss_npg, stack_npg);
+    // TracePrintf(0, "LoadProgram: text_npg %d, data_bss_npg %d, stack_npg %d\n",
+	// text_npg, data_bss_npg, stack_npg);
 
     /*
      *  Make sure we have enough *virtual* memory to fit everything within
@@ -147,15 +147,7 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
     >>>> freed below before we allocate the needed pages for
     >>>> the new program being loaded.
     */
-    // unsigned int used_npg = 0;
-    // for(i=MEM_INVALID_PAGES; i<PAGE_TABLE_LEN - KERNEL_STACK_PAGES; i++){
-    //     if(active_proc->pt_r0[i].valid == 1){
-    //         used_npg++;
-    //     }
-    // }
-
-    // if (!CheckPhysFrame(text_npg + data_bss_npg + stack_npg - used_npg))
-    TracePrintf(0, "free_frame_count = %d\n", free_frame_count);
+    // TracePrintf(0, "free_frame_count = %d\n", free_frame_count);
     if(text_npg + data_bss_npg + stack_npg + 1 > free_frame_count){
 	TracePrintf(0,
 	    "LoadProgram: program '%s' size too large for PHYSICAL memory\n",
@@ -168,7 +160,8 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
     // >>>> Initialize sp for the current process to (void *)cpp.
     // >>>> The value of cpp was initialized above.
     info->sp = (void *)cpp;
-
+    active_proc->stack_base = info->sp;
+    // TracePrintf(0, "info->sp = 0x%lx\n", info->sp);
     /*
      *  Free all the old physical memory belonging to this process,
      *  but be sure to leave the kernel stack for this process (which
@@ -184,13 +177,6 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
 
     FreePhysicalAddr(MEM_INVALID_PAGES, PAGE_TABLE_LEN - KERNEL_STACK_PAGES, pt_r0);
 
-    // struct pte *pt_r0 = active_proc->pt_r0;
-    // for(i=MEM_INVALID_PAGES; i<PAGE_TABLE_LEN - KERNEL_STACK_PAGES; i++){
-    //     if(pt_r0[i].valid == 1){
-    //         pt_r0[i].valid = 0;
-    //         FreeFrame(pt_r0[i].pfn);
-    //     }
-    // }
     /*
      *  Fill in the page table with the right number of text,
      *  data+bss, and stack pages.  We set all the text pages
@@ -209,17 +195,9 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
     // >>>>     kprot = PROT_READ | PROT_WRITE
     // >>>>     uprot = PROT_READ | PROT_EXEC
     // >>>>     pfn   = a new page of physical memory
-    // TracePrintf(0, "Start GetfreePhysicalAddr\n");
+
     GetfreePhysicalAddr(MEM_INVALID_PAGES, MEM_INVALID_PAGES + text_npg, PROT_READ | PROT_WRITE, PROT_READ | PROT_EXEC, pt_r0);
-    // TracePrintf(0, "Finish GetfreePhysicalAddr\n");
-    int pageNumber;
-    // for(i=MEM_INVALID_PAGES; i < MEM_INVALID_PAGES + text_npg; i++){
-    //     pt_r0[i].valid = 1;
-    //     pt_r0[i].kprot = PROT_READ | PROT_WRITE;
-    //     pt_r0[i].uprot = PROT_READ | PROT_EXEC;
-    //     pt_r0[i].pfn = GetFreeFrame();
-    //     TracePrintf(5, "pt_r0[0x%lx].pfn = 0x%lx\n", i, pt_r0[i].pfn);
-    // }
+
 
     /* Then the data and bss pages */
     // >>>> For the next data_bss_npg number of PTEs in the Region 0
@@ -231,15 +209,10 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
 
     GetfreePhysicalAddr(MEM_INVALID_PAGES + text_npg, MEM_INVALID_PAGES + text_npg + data_bss_npg, 
                 PROT_READ | PROT_WRITE, PROT_READ | PROT_WRITE, pt_r0);
-    // TracePrintf(0, "Finish GetfreePhysicalAddr by data_bss\n");
-    // for (; i < MEM_INVALID_PAGES + text_npg + data_bss_npg; ++i){
-    //     pt_r0[i].valid = 1;
-    //     pt_r0[i].kprot = PROT_READ | PROT_WRITE;
-    //     pt_r0[i].uprot = PROT_READ | PROT_WRITE;
-    //     pt_r0[i].pfn = GetFreeFrame();
-    //     TracePrintf(5, "pt_r0[0x%lx].pfn = 0x%lx\n", i, pt_r0[i].pfn);
-    // }
-
+    active_proc->brk = (MEM_INVALID_PAGES + text_npg + data_bss_npg) << PAGESHIFT;
+    TracePrintf(0, "---------------------\n");
+    TracePrintf(0, "In load program: active_proc->pid = %d\n", active_proc->pid);
+    TracePrintf(0, "In load program: active_proc->brk = 0x%lx\n", active_proc->brk);
     /* And finally the user stack pages */
     // >>>> For stack_npg number of PTEs in the Region 0 page table
     // >>>> corresponding to the user stack (the last page of the
@@ -253,16 +226,6 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
     GetfreePhysicalAddr(USER_PAGES - stack_npg, USER_PAGES, 
                 PROT_READ | PROT_WRITE, PROT_READ | PROT_WRITE, pt_r0);
     TracePrintf(0, "Finish User stack\n");
-    // for(i=0; i<stack_npg; i++){
-    //     pageNumber = ((unsigned int)(USER_STACK_LIMIT - VMEM_0_BASE) >> PAGESHIFT) - 1 - i;
-    //     active_proc->stack_base = pageNumber;
-    //     pt_r0[pageNumber].valid = 1;
-    //     pt_r0[pageNumber].kprot = PROT_READ | PROT_WRITE;
-    //     pt_r0[pageNumber].uprot = PROT_READ | PROT_WRITE;
-    //     pt_r0[pageNumber].pfn = GetFreeFrame();
-    //     TracePrintf(5, "pt_r0[0x%lx].pfn = 0x%lx\n", pageNumber, pt_r0[pageNumber].pfn);
-    // }
-    // active_proc->brk = (MEM_INVALID_PAGES + text_npg + data_bss_npg) << PAGESHIFT;
 
     /*
      *  All pages for the new address space are now in place.  Flush
@@ -293,6 +256,7 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
      *  and executable, but not writable.
      */
     // TracePrintf(0, "Start PTE for text readable and executable\n");
+    int pageNumber;
     struct pte* TempVir2phy = TempVirtualMem;
     pt_r1[(TempVirtualMem-VMEM_1_BASE) >> PAGESHIFT].pfn = (unsigned long)(pt_r0) >> PAGESHIFT;
     for(i=0; i<text_npg; i++){
@@ -301,12 +265,7 @@ LoadProgram(char *name, char **args, ExceptionInfo *info)
         TempVir2phy[pageNumber].kprot = PROT_READ | PROT_EXEC;
         TempVir2phy[pageNumber].uprot = PROT_READ | PROT_EXEC;
     }
-    // TracePrintf(0, "Finish PTE for text readable and executable\n");
-    // for(i=0; i<text_npg; i++){
-    //     pageNumber = MEM_INVALID_PAGES + i;
-    //     pt_r0[pageNumber].kprot = PROT_READ | PROT_EXEC;
-    //     pt_r0[pageNumber].uprot = PROT_READ | PROT_EXEC;
-    // }
+
     // >>>> For text_npg number of PTEs corresponding to the user text
     // >>>> pages, set each PTE's kprot to PROT_READ | PROT_EXEC.
 

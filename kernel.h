@@ -9,11 +9,19 @@
 #include <comp421/yalnix.h>
 #include <comp421/loadinfo.h>
 
+// =============================================================================
+// Gloabal variables Section
+// =============================================================================
+
 extern unsigned long TempVirtualMem;
 extern struct pte *pt_r1;
 extern struct pte *pt_r0;
 extern int free_frame_count;
 int LoadProgram(char *name, char **args, ExceptionInfo *info);
+
+// =============================================================================
+// PageTable and Memory Section
+// =============================================================================
 
 // Use linked list data structure to build free page frame
 typedef struct PhysFrame
@@ -26,14 +34,17 @@ extern PhysFrame *physFrame_head;
 
 unsigned long GetFreeFrame();
 
-unsigned long GetFromPTMEM();
-
 void FreeFrame(unsigned long addr);
 
 void GetfreePhysicalAddr(unsigned long begin, unsigned long end, unsigned int kprot, unsigned uprot, struct pte* cur_ptr0);
+
 void FreePhysicalAddr(unsigned long begin, unsigned long end, struct pte* cur_ptr0);
 
-int CheckPhysFrame(int);
+int CheckPhysFrame(int req_count);
+
+// =============================================================================
+// PCB Section
+// =============================================================================
 
 // Use queue to store status
 typedef struct Status
@@ -53,7 +64,7 @@ typedef struct pcb {
     void *stack_base;
     struct pte *pt_r0;
     SavedContext ctx;
-    Status *statusQueue;
+    Status statusQueue;
     struct pcb *parent;
     struct pcb *prev;
     struct pcb *next;
@@ -63,6 +74,8 @@ extern unsigned int process_count;
 extern pcb *active_proc;
 extern pcb *idle_proc;
 extern pcb *init_proc;
+
+// Dummy node for linked list
 extern pcb delay_proc;
 extern pcb wait_proc;
 extern pcb ready_proc;
@@ -77,8 +90,9 @@ void AppendStatus(struct Status *status_que, int status);
 
 void RemoveParent(pcb *cur, pcb *queHead);
 
-// Swtich Function
-RCS421RegVal Virt2Phy(unsigned long addr);
+// =============================================================================
+// Context Switch Functions
+// =============================================================================
 
 SavedContext *init_SwtichFunc(SavedContext *ctpx, void *p1, void *p2);
 
@@ -94,7 +108,38 @@ SavedContext *Tty_SwitchFunc(SavedContext *ctxp, void *p1, void *p2);
 
 SavedContext *SwitchFunc(SavedContext *ctxp, void *p1, void *p2);
 
-
 void PhysAddr_map_VirAddr(struct pte *pageTable);
+
+// =============================================================================
+// Terminal Section
+// =============================================================================
+
+typedef struct buff{
+    int count;
+    int cur_pos;
+    char text[TERMINAL_MAX_LINE];
+    struct buff *next;
+}buff;
+
+typedef struct Terminal{
+    buff read_buff;
+    buff write_buff;
+    pcb write_pcb;  // dummy node as linked list
+    pcb read_pcb;   // dummy node as linked list
+}Terminal;
+
+extern struct Terminal terminals[NUM_TERMINALS];
+
+void Push_TerminalReadPCB(int tty_id, pcb *cur_pcb);
+
+void Push_TerminalWritePCB(int tty_id, pcb *cur_pcb);
+
+pcb *Pop_TerminalReadPCB(int tty_id);
+
+pcb *Pop_TerminalWritePCB(int tty_id);
+
+void Push_TerminalBUFF(buff *que, buff *cur_buff);
+
+buff *Pop_TerminalBUFF(buff *que);
 
 #endif

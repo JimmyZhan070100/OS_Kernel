@@ -26,10 +26,10 @@
 #	if you have a file named test1.c in this directory.
 #
 # ALL = yalnix test1 test2 test3
-# TESTS_SRCS := $(wildcard tests/*.c)
-# TESTS := $(TESTS_SRCS:tests/%.c=%)
-# ALL = yalnix init $(TESTS)
-ALL = yalnix init brktest exectest
+TESTS_SRCS := $(wildcard samples-lab2/*.c)
+TESTS := $(TESTS_SRCS:samples-lab2/%.c=%)
+ALL = yalnix init  test $(TESTS)
+# ALL = yalnix init
 
 #
 #	You must modify the KERNEL_OBJS and KERNEL_SRCS definitions
@@ -70,11 +70,13 @@ yalnix: $(KERNEL_OBJS)
 
 clean:
 	rm -f $(KERNEL_OBJS) $(ALL) TTY* TRACE DISK core*
-
+	find samples-lab2/ -name '*.o' -delete
+	find samples-lab2/ -type f -executable -delete
+	
 depend:
 	$(CC) $(CPPFLAGS) -M $(KERNEL_SRCS) > .depend
 
-$(TESTS): %: tests/%.o
-	$(LINK.o) -o tests/$@ $^ $(LOADLIBES) $(LDLIBS)
+$(TESTS): %: samples-lab2/%.o
+	$(LINK.o) -o samples-lab2/$@ $^ $(LOADLIBES) $(LDLIBS)
 
 #include .depend

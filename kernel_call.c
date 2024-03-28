@@ -24,6 +24,28 @@ int MyFork(void){
 
 int MyExec(char *filename, char **argvec, ExceptionInfo *info){
     TracePrintf(0, "Enter MyExec(%s)...\n", filename);
+
+    // Error check if argvec has valid pointers
+    int i = 0;
+    int flag = 0;
+    int page_iter = (int)(((long) argvec) >> PAGESHIFT);
+    struct pte* TempVir2phy = TempVirtualMem;
+	while (flag == 0) {
+        PhysAddr_map_VirAddr(active_proc->pt_r0);
+		if ((!TempVir2phy[page_iter].kprot & PROT_READ) || !TempVir2phy[page_iter].valid) {
+			MyExit(ERROR);
+		}
+		while (i * sizeof(char *) < ((page_iter + 1) << PAGESHIFT) - (long)argvec) {
+			if (argvec[i] == NULL) {
+				flag = 1;
+				break;
+			}
+			i++;
+		}
+		page_iter++;
+	}
+    TracePrintf(0, "Exec: pass check\n");
+
     if (filename == NULL){
         return ERROR;
     }
@@ -44,12 +66,19 @@ int MyExec(char *filename, char **argvec, ExceptionInfo *info){
 void MyExit(int status){
     TracePrintf(0, "Enter MyExit (%d)...\n", status);
     if(ready_proc.next == NULL && delay_proc.next == NULL && wait_proc.next == NULL){
-        /*
-         * Handling the terminal proecss
-         *
-        */
-        TracePrintf(0, "Enter MyExit (%d), Every process is empty\n", status);
-        Halt();
+        // Handle the terminal process
+        int isAllEmpty = 1;
+        int tty_id;
+        for(tty_id=0; tty_id<NUM_TERMINALS; tty_id++){
+            if(terminals[tty_id].read_pcb.next || terminals[tty_id].write_pcb.next){
+                isAllEmpty = 0;
+                break;
+            }
+        }
+        if(isAllEmpty){
+            TracePrintf(0, "Enter MyExit (%d), Every process is empty\n", status);
+            Halt();
+        }
     }
     if(active_proc->num_child > 0){
         RemoveParent(active_proc, &ready_proc);
@@ -58,12 +87,23 @@ void MyExit(int status){
     }
     // TracePrintf(0, "active_proc->parent = 0x%lx\n", active_proc->parent);
     if(active_proc->parent){
-        // AppendStatus(active_proc->parent->statusQueue, status);
+        AppendStatus(&active_proc->parent->statusQueue, status);
+        TracePrintf(0, "Enter Parent part\n");
+        pcb *node = &wait_proc;
+        pcb *tmp;
+        while(node && node->next){
+            node = node->next;
+            if(node->pid == active_proc->parent->pid){
+                RemovePCB(node);
+                AddPCB(node, &ready_proc);
+                node = tmp;
+            }
+        }
         // ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, active_proc->parent);
         ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
     }
     else{
-        TracePrintf(0, "Enter Here\n");
+        TracePrintf(0, "Just Exit\n");
         ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
     }
     return;
@@ -74,18 +114,18 @@ int MyWait(int *status_ptr){
     if(active_proc->num_child == 0){
         return ERROR;
     }
-    else if(active_proc->statusQueue->next == NULL){
+    else if(active_proc->statusQueue.next == NULL){
         ContextSwitch(Wait_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
     }
     
     // Pop status queue
-    struct Status *tmp_status = active_proc->statusQueue->next;
-    active_proc->statusQueue->next = active_proc->statusQueue->next->next;
+    struct Status *tmp_status = active_proc->statusQueue.next;
+    active_proc->statusQueue.next = active_proc->statusQueue.next->next;
     --active_proc->num_child;
-    unsigned int rtn_pid = tmp_status->pid;
+    unsigned int return_pid = tmp_status->pid;
     *status_ptr = tmp_status->status;
     free(tmp_status);
-    return rtn_pid;
+    return return_pid;
 }
 
 int MyGetPid(void){
@@ -95,7 +135,7 @@ int MyGetPid(void){
 
 int MyBrk(void *addr){
     TracePrintf(0, "Enter MyBrk: Brk(0x%lx),    active_proc->brk = 0x%lx\n", addr, active_proc->brk);
-    int desired_npg = (UP_TO_PAGE(addr) - (int)active_proc->brk) >> PAGESHIFT;
+    int desired_npg = (UP_TO_PAGE(addr) - (unsigned long)active_proc->brk) >> PAGESHIFT;
     if(!CheckPhysFrame(desired_npg)){
         TracePrintf(0, "Not enough physical frames\n");
         return ERROR;
@@ -123,10 +163,78 @@ int MyDelay(int clock_ticks){
 
 int MyTtyRead(int tty_id, void *buf, int len){
     TracePrintf(0, "Enter MyTtyRead\n");
-    return 0;
+
+    // Check buffer bits & validity
+    int page_iter;
+	int prot_bit = PROT_WRITE;
+    struct pte* TempVir2phy = TempVirtualMem;
+    for (page_iter = (int)(((long)buf)>>PAGESHIFT); page_iter < (int)(UP_TO_PAGE((long)buf + len)>>PAGESHIFT); page_iter++) {
+        PhysAddr_map_VirAddr(active_proc->pt_r0);
+        if (!(TempVir2phy[page_iter].kprot & prot_bit) || !TempVir2phy[page_iter].valid) {
+        	fprintf(stderr, "TtyRead: invalid buffer.\n");
+        	MyExit(ERROR);
+        }
+    }
+
+    if(tty_id >= NUM_TERMINALS || len > TERMINAL_MAX_LINE){
+        return ERROR;
+    }
+    if(terminals[tty_id].read_buff.next == NULL){
+        // Wait for a new read buffer
+        Push_TerminalReadPCB(tty_id, active_proc);
+        ContextSwitch(Tty_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
+    }
+    // Have read buffer
+    int readLength;
+    if(terminals[tty_id].read_buff.next->count > len){
+        memcpy(buf, terminals[tty_id].read_buff.next->text + terminals[tty_id].read_buff.next->cur_pos, len);
+        readLength = len;
+        terminals[tty_id].read_buff.next->cur_pos += len;
+        terminals[tty_id].read_buff.next->count -= len;
+    }
+    else{
+        memcpy(buf, terminals[tty_id].read_buff.next->text + terminals[tty_id].read_buff.next->cur_pos, 
+                terminals[tty_id].read_buff.next->count);
+        readLength = terminals[tty_id].read_buff.next->count;
+        struct buff *tmp = Pop_TerminalBUFF(&terminals[tty_id].read_buff);
+        free(tmp);
+    }
+    return readLength;
 }
 
 int MyTtyWrite(int tty_id, void *buf, int len){
     TracePrintf(0, "Enter MyTtyWrite\n");
-    return 0; 
+
+    // Check buffer bits & validity
+    int page_iter;
+	int prot_bit = PROT_READ;
+    struct pte* TempVir2phy = TempVirtualMem;
+    for (page_iter = (int)(((long)buf)>>PAGESHIFT); page_iter < (int)(UP_TO_PAGE((long)buf + len)>>PAGESHIFT); page_iter++) {
+        PhysAddr_map_VirAddr(active_proc->pt_r0);
+        if (!(TempVir2phy[page_iter].kprot & prot_bit) || !TempVir2phy[page_iter].valid) {
+        	fprintf(stderr, "TtyWrite: invalid buffer.\n");
+        	MyExit(ERROR);
+        }
+    }
+
+    if(tty_id >= NUM_TERMINALS || len > TERMINAL_MAX_LINE){
+        return ERROR;
+    }
+
+    // Copy chars into write_buffer
+    buff *write_buffer = calloc(1, sizeof(struct buff));
+    write_buffer->count = len;
+    write_buffer->cur_pos = 0;
+    memcpy(write_buffer->text, buf, len);
+    Push_TerminalBUFF(&terminals[tty_id].write_buff, write_buffer);
+
+    // Put active_proc into write_pcb queue
+    Push_TerminalWritePCB(tty_id, active_proc);
+    if(terminals[tty_id].write_pcb.next == active_proc){
+        TtyTransmit(tty_id, write_buffer->text, len);
+    }
+
+    // Switch to next ready process
+    ContextSwitch(Tty_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
+    return len;
 }

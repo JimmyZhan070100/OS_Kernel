@@ -13,9 +13,9 @@ StartTerminal(int i)
     int pid;
 
     if (i == TTY_CONSOLE)
-	cmd_argv[0] = "console";
+	cmd_argv[0] = "samples-lab2/console";
     else
-	cmd_argv[0] = "shell";
+	cmd_argv[0] = "samples-lab2/shell";
     sprintf(numbuf, "%d", i);
     cmd_argv[1] = numbuf;
     cmd_argv[2] = NULL;
