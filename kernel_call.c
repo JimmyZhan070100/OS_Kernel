@@ -77,6 +77,7 @@ void MyExit(int status){
         }
         if(isAllEmpty){
             TracePrintf(0, "Enter MyExit (%d), Every process is empty\n", status);
+            printf("Enter MyExit (%d), Every process is empty\n", status);
             Halt();
         }
     }
