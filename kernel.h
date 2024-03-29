@@ -76,9 +76,9 @@ extern pcb *idle_proc;
 extern pcb *init_proc;
 
 // Dummy node for linked list
-extern pcb delay_proc;
-extern pcb wait_proc;
-extern pcb ready_proc;
+extern pcb delayQue_pcb;
+extern pcb waitQue_pcb;
+extern pcb readyQue_pcb;
 
 void AddPCB(pcb *cur, pcb *queHead);
 

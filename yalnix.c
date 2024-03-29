@@ -129,7 +129,6 @@ void KernelStart(ExceptionInfo *info, unsigned int pmem_size, void *orig_brk, ch
     pt_r0[pageNumber].valid = ++process_count;
     pt_r0[pageNumber].pfn = GetFreeFrame();
     pt_r0[pageNumber].kprot = PROT_READ | PROT_WRITE;
-    // TracePrintf(5, "idle: pt_r0[0x%lx].pfn = 0x%lx\n", pageNumber, pt_r0[pageNumber].pfn);
 
     // Create init process and load into it
     if(cmd_args[0]){
@@ -149,11 +148,13 @@ int SetKernelBrk(void *addr){
     if((unsigned long)addr > VMEM_1_LIMIT){
         return -1;
     }
+    // If virtual memory is not yet enabled, just update the kernel break
     if(vm_enabled == 0){
         TracePrintf(0, "In SetKernelBrk: (0x%lx) vm not set yet\n", addr);
         kernel_brk = addr;
     }
     else{
+        // If virtual memory is enabled, adjust the kernel break with proper memory allocation
         TracePrintf(0, "In SetKernelBrk: (0x%lx) vm is set\n", addr);
         unsigned long new_brake = UP_TO_PAGE(addr);
         unsigned long old_brake = UP_TO_PAGE(kernel_brk);

@@ -4,7 +4,7 @@ unsigned long TempVirtualMem;
 
 PhysFrame *physFrame_head;
 int free_frame_count = 0;
-unsigned long next_PT_validAddr = VMEM_1_LIMIT - 2*PAGESIZE;
+
 
 struct pte *pt_r1;
 struct pte *pt_r0;
@@ -13,9 +13,9 @@ unsigned int process_count = 0;
 pcb *active_proc;
 pcb *idle_proc;
 pcb *init_proc;
-pcb delay_proc;
-pcb wait_proc;
-pcb ready_proc;
+pcb delayQue_pcb;
+pcb waitQue_pcb;
+pcb readyQue_pcb;
 
 Terminal terminals[NUM_TERMINALS];
 
@@ -191,17 +191,17 @@ SavedContext *init_SwtichFunc(SavedContext *ctpx, void *p1, void *p2){
 
 SavedContext *Delay_SwitchFunc(SavedContext *ctpx, void *p1, void *p2){
     TracePrintf(0, "=== In Delay_SwitchFunc from 0x%lx to 0x%lx ===\n", p1, p2);
-    if(ready_proc.next == NULL){
+    if(readyQue_pcb.next == NULL){
         WriteRegister(REG_PTR0, idle_proc->pt_r0);
         active_proc = idle_proc;
     }
     else{
-        WriteRegister(REG_PTR0, ((pcb *)ready_proc.next)->pt_r0);
-        active_proc = ready_proc.next;
-        RemovePCB(ready_proc.next);
+        WriteRegister(REG_PTR0, ((pcb *)readyQue_pcb.next)->pt_r0);
+        active_proc = readyQue_pcb.next;
+        RemovePCB(readyQue_pcb.next);
     }
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_0);
-    AddPCB(p1, &delay_proc);
+    AddPCB(p1, &delayQue_pcb);
     TracePrintf(0, "=== End Delay_SwitchFunc ===\n");
     return &active_proc->ctx;
 }
@@ -217,6 +217,8 @@ SavedContext *Fork_SwitchFunc(SavedContext *ctpx, void *parent, void *child){
     struct pte* parent_ptr0 = ((pcb *)parent)->pt_r0;
     TracePrintf(0, "partent_ptr0 = 0x%lx\n", parent_ptr0);
 
+    // First, use reserved addr to map virtual addr for parent and use tempEntry to copy parent info
+    // Second, use reserved addr to map virtual addr for child adn copy info to child
     for(index=0; index<PAGE_TABLE_LEN; index++){
         // pt_r1[(TempVirtualMem-VMEM_1_BASE) >> PAGESHIFT].pfn = (unsigned long)(parent_ptr0) >> PAGESHIFT;
         // WriteRegister(REG_TLB_FLUSH, TempVirtualMem);
@@ -250,7 +252,7 @@ SavedContext *Fork_SwitchFunc(SavedContext *ctpx, void *parent, void *child){
     WriteRegister(REG_PTR0, child_ptr0);
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_0);
     TracePrintf(0, "=== End Fork_SwitchFunc ===\n");
-    AddPCB((pcb *)parent, &ready_proc);
+    AddPCB((pcb *)parent, &readyQue_pcb);
     return &active_proc->ctx;
 }
 
@@ -289,7 +291,7 @@ SavedContext *Wait_SwitchFunc(SavedContext *ctxp, void *p1, void *p2){
     TracePrintf(0, "Wait_SwitchFunc from 0x%lx to 0x%lx\n", p1, p2);
     
     // put into wait queue
-    AddPCB(p1, &wait_proc);
+    AddPCB(p1, &waitQue_pcb);
 
     if(p2){
         active_proc = p2;
@@ -325,12 +327,13 @@ SavedContext *SwitchFunc(SavedContext *ctxp, void *p1, void *p2){
     RemovePCB(p2);
     active_proc = p2;
     if (((pcb *)p1)->pid > 0){
-        AddPCB(p1, &ready_proc);
+        AddPCB(p1, &readyQue_pcb);
     }
 
     return &active_proc->ctx;
 }
 
+// Use the reserve phsical address temp to map to virtual address
 void PhysAddr_map_VirAddr(struct pte *pageTable){
     pt_r1[(TempVirtualMem-VMEM_1_BASE) >> PAGESHIFT].pfn = (unsigned long)(pageTable) >> PAGESHIFT;
     WriteRegister(REG_TLB_FLUSH, TempVirtualMem);

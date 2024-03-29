@@ -28,7 +28,7 @@
 # ALL = yalnix test1 test2 test3
 TESTS_SRCS := $(wildcard samples-lab2/*.c)
 TESTS := $(TESTS_SRCS:samples-lab2/%.c=%)
-ALL = yalnix init  test $(TESTS)
+ALL = yalnix init test $(TESTS)
 # ALL = yalnix init
 
 #

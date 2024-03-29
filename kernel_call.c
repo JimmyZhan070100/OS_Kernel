@@ -65,7 +65,7 @@ int MyExec(char *filename, char **argvec, ExceptionInfo *info){
 
 void MyExit(int status){
     TracePrintf(0, "Enter MyExit (%d)...\n", status);
-    if(ready_proc.next == NULL && delay_proc.next == NULL && wait_proc.next == NULL){
+    if(readyQue_pcb.next == NULL && delayQue_pcb.next == NULL && waitQue_pcb.next == NULL){
         // Handle the terminal process
         int isAllEmpty = 1;
         int tty_id;
@@ -81,30 +81,30 @@ void MyExit(int status){
         }
     }
     if(active_proc->num_child > 0){
-        RemoveParent(active_proc, &ready_proc);
-        RemoveParent(active_proc, &delay_proc);
-        RemoveParent(active_proc, &wait_proc);
+        RemoveParent(active_proc, &readyQue_pcb);
+        RemoveParent(active_proc, &delayQue_pcb);
+        RemoveParent(active_proc, &waitQue_pcb);
     }
     // TracePrintf(0, "active_proc->parent = 0x%lx\n", active_proc->parent);
     if(active_proc->parent){
         AppendStatus(&active_proc->parent->statusQueue, status);
         TracePrintf(0, "Enter Parent part\n");
-        pcb *node = &wait_proc;
+        pcb *node = &waitQue_pcb;
         pcb *tmp;
         while(node && node->next){
             node = node->next;
             if(node->pid == active_proc->parent->pid){
                 RemovePCB(node);
-                AddPCB(node, &ready_proc);
+                AddPCB(node, &readyQue_pcb);
                 node = tmp;
             }
         }
         // ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, active_proc->parent);
-        ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
+        ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, readyQue_pcb.next);
     }
     else{
         TracePrintf(0, "Just Exit\n");
-        ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
+        ContextSwitch(Exit_SwitchFunc, &active_proc->ctx, active_proc, readyQue_pcb.next);
     }
     return;
 }
@@ -115,7 +115,7 @@ int MyWait(int *status_ptr){
         return ERROR;
     }
     else if(active_proc->statusQueue.next == NULL){
-        ContextSwitch(Wait_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
+        ContextSwitch(Wait_SwitchFunc, &active_proc->ctx, active_proc, readyQue_pcb.next);
     }
     
     // Pop status queue
@@ -182,7 +182,7 @@ int MyTtyRead(int tty_id, void *buf, int len){
     if(terminals[tty_id].read_buff.next == NULL){
         // Wait for a new read buffer
         Push_TerminalReadPCB(tty_id, active_proc);
-        ContextSwitch(Tty_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
+        ContextSwitch(Tty_SwitchFunc, &active_proc->ctx, active_proc, readyQue_pcb.next);
     }
     // Have read buffer
     int readLength;
@@ -235,6 +235,6 @@ int MyTtyWrite(int tty_id, void *buf, int len){
     }
 
     // Switch to next ready process
-    ContextSwitch(Tty_SwitchFunc, &active_proc->ctx, active_proc, ready_proc.next);
+    ContextSwitch(Tty_SwitchFunc, &active_proc->ctx, active_proc, readyQue_pcb.next);
     return len;
 }
