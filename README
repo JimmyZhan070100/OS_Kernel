@@ -1,3 +1,8 @@
+# Team Members
+
+- Chun-Min Chan, NetID: jc272
+- Zh-Hao Lin, NetID: zl157
+
 # README for Yalnix Operating System Kernel
 
 - `samples-lab2/`: tests for kernel
@@ -72,8 +77,8 @@ This is the main kernel file that includes critical initialization functions:
 ## Tests section
 
 Currently, fail the following test files
-- forktest3
-- init
+- forktest3: when forking several processes, the kernel will trapMemory and leave.
+- init: when fork the process for each terminal, the origin process will exit and fork another process to replace it, which finally leads to trapMemory
 - init1
 - init2
 - init3
@@ -82,12 +87,12 @@ The others can work correctly.
 
 ## Usage
 - Exucte Makefile
-`$ make all`
+`$ make`
 - Choose the file you want to execute
 `$ ./yalinx -s samples-lab2/[fileName]`
 - If want clean all
 `$ make clean`
 
 Example:
-- `$ ./yalinx -lk 5 -lu 5 -s samples-lab2/brktest`
 - `$ ./yalinx -lk 5 -lu 5 -s test`
+- `$ ./yalinx -lk 5 -lu 5 -s samples-lab2/brktest`
