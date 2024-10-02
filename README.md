@@ -1,19 +1,14 @@
-# Team Members
-
-- Chun-Min Chan, NetID: jc272
-- Zh-Hao Lin, NetID: zl157
-
-# README for Yalnix Operating System Kernel
+# README for Operating System Kernel
 
 - `samples-lab2/`: tests for kernel
 - `yalinx.c`: Include `kernelStart` and `setKernelBrk` function
 - `handler.c & handler.h`: Functions for trap exceptions
 - `kernel_call.c & kernel_call.h`: Once handler trap exceptions, call the corresponded functions
 - `kernel.c & kernel.h`: Contains major functions and data structres like pageTable, memory, PCB, context switch, and terminal
-- `load.c`: function `LoadProgram` that can load a Yalnix program into memory.
+- `load.c`: function `LoadProgram` that can load a program into memory.
 - `test.c`: a program called GetPid() as init program
 
-## `yalinx` Features
+## Features
 
 This is the main kernel file that includes critical initialization functions:
 
